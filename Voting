@@ -1,0 +1,84 @@
+pragma solidity ^0.4.15;
+
+contract Voting {
+    enum VotingState {START, STOP}
+    VotingState voting;
+    address chairPerson;
+    
+    function Voting() {
+        chairPerson = msg.sender;
+        voting = VotingState.STOP;
+    }
+    
+    struct Voter {
+        bool voted;
+    }
+    
+    struct Candidate {
+        string name;
+        uint voteCount;
+    }
+    
+    Candidate[] public candidates;
+    mapping(address => Voter) voters;
+    
+    modifier onlyChair {
+        require(msg.sender == chairPerson);
+        _;
+    }
+    
+    modifier votingStarted {
+        require(voting == VotingState.START);
+        _;
+    }
+    
+    modifier votingStoped {
+        require(voting == VotingState.STOP);
+        _;
+    }
+    
+    modifier notYetVoted {
+        Voter storage sender = voters[msg.sender];
+        
+        require(!sender.voted);
+        sender.voted = true;
+        _;
+    }
+    
+    function startVoting() onlyChair {
+        voting = VotingState.START;
+    }
+    
+    function stopVoting() onlyChair {
+        voting = VotingState.STOP;
+    }
+    
+    function registerCandidate(string candidateName) onlyChair votingStoped {
+        candidates.push(Candidate({
+            name: candidateName,
+            voteCount: 0
+        }));
+    }
+    
+    function vote(uint8 candidateIndex) votingStarted notYetVoted {
+        candidates[candidateIndex].voteCount++;
+    }
+    
+    function findWinner() constant onlyChair votingStoped
+            returns (string winnerName)
+    {
+        uint highestVotes = 0;
+        uint8 winnerIndex;
+        
+        for(uint8 i = 0; i < candidates.length; i++) {
+            if(highestVotes < candidates[i].voteCount) {
+                highestVotes = candidates[i].voteCount;
+                winnerIndex = i;
+            }
+        }
+        
+        require(highestVotes > 0);
+        winnerName = candidates[winnerIndex].name;
+    }
+}
+
